@@ -6,56 +6,53 @@ on:
     - cron: '0 13 * * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   draft-answer:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+      id-token: write
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
+          fetch-depth: 1
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            あなたはこのリポジトリ(ai-natchブログ)のメンテナが毎日行っているルーチン作業を代行します。
+            以下の手順を順番に実行してください。
 
-      - name: Generate answer post
-        id: generate
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: node scripts/generate-answer-post.mjs
-
-      - name: Open pull request
-        if: steps.generate.outputs.created == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SLUG: ${{ steps.generate.outputs.slug }}
-          TITLE: ${{ steps.generate.outputs.title }}
-          HACH_URL: ${{ steps.generate.outputs.hach_url }}
-        run: |
-          set -eu
-          git config user.name "ai-natch-bot"
-          git config user.email "ai-natch-bot@users.noreply.github.com"
-
-          BRANCH="hach-answer/${SLUG}"
-          git checkout -b "$BRANCH"
-          git add "src/content/blog/${SLUG}.md" data/answered-hach-posts.json
-          git commit -m "Add answer post: ${TITLE}"
-          git push -u origin "$BRANCH"
-
-          gh pr create \
-            --title "アンサー記事: ${TITLE}" \
-            --body "HACH Blogの新着記事に対するアンサー記事を自動生成しました。
-
-元記事: ${HACH_URL}
-
-マージ前に内容（事実関係・トーン・自社言及の妥当性）を確認してください。" \
-            --base main \
-            --head "$BRANCH"
+            1. `curl -s https://blog.hach.work/feed` でAtomフィードを取得し、記事一覧
+               （タイトル・URL・公開日）を把握する。
+            2. `data/answered-hach-posts.json` に記録済みのURL一覧と突き合わせ、まだ
+               アンサー記事を書いていない記事を探す。
+               - 未対応記事が複数あれば、公開日が最も古いものを1件だけ選ぶ。
+               - 未対応記事が無ければ、ファイルを一切変更せず、コミットもPRも作らずに終了する。
+            3. 選んだ記事のURLを`curl`で取得し本文を把握したうえで、アンサー記事を1本書く。
+               - `docs/POSITIONING-DRAFT.md` に書かれているスタンス（ai-natchの未確認の
+                 機能・実績などは書かない、相手記事の課題認識を頭ごなしに否定しない、
+                 自社への言及は最後に一言程度に留める）に従うこと。
+               - `src/content/blog/` 配下の既存記事（`answerTo`フィールドを持つもの）を
+                 トーン・構成の参考にすること。
+               - `src/content/config.ts` のfrontmatterスキーマ（title, description,
+                 pubDate, tags, answerTo）に従うこと。
+               - 本文はである調で統一し、見出し(##)を2〜4個使い、800〜1400字程度にする。
+               - 末尾に元記事へのリンクを
+                 `元記事: [タイトル](URL)（HACH Blog）` の形式で必ず入れる。
+               - ファイル名(slug)は元記事URLの末尾のパスセグメントに `-kotae` を付けたものに
+                 する（例: `https://blog.hach.work/2026/09/foo-bar/` なら
+                 `src/content/blog/foo-bar-kotae.md`）。
+            4. `data/answered-hach-posts.json` に今回対応した記事
+               (`hachUrl`, `answerSlug`, `answeredAt`) を追記する。
+            5. 新しいブランチ (`hach-answer/<slug>`) を作成し、生成した記事ファイルと
+               更新した `data/answered-hach-posts.json` の2ファイルだけをコミットして
+               push する。これ以外のファイルは変更しない。
+            6. `gh pr create` でPRを作成する。base は `main`、タイトルは
+               「アンサー記事: <記事タイトル>」、本文には元記事URLと
+               「マージ前に内容を確認してください」という一言を含める。
