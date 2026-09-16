@@ -23,11 +23,11 @@ npm run dev
 ## HACHアンサー記事の自動生成
 
 `.github/workflows/hach-answer.yml` が毎日HACHの新着記事（`https://blog.hach.work/feed`）を
-チェックし、未対応の記事があれば `scripts/generate-answer-post.mjs` でアンサー記事を1本生成、
-ブランチを切ってPRを作成します。内容は人がレビューしてからマージしてください。
+チェックし、未対応の記事があればClaude Code（`anthropics/claude-code-action`）にアンサー記事を
+1本書かせ、ブランチを切ってPRを作成します。内容は人がレビューしてからマージしてください。
 
-このワークフローを動かすには、リポジトリのSecretsに `ANTHROPIC_API_KEY` を設定する必要が
-あります（Settings > Secrets and variables > Actions）。
+このワークフローは他のワークフロー（`claude.yml` など）と同じ `CLAUDE_CODE_OAUTH_TOKEN`
+シークレットを使い回すので、追加のAPIキー設定は不要です。
 
 記事のトーン・スタンスは `docs/POSITIONING-DRAFT.md` を参照して生成されます。
 ai-natchのプロダクト内容が固まったら、このファイルを更新してください。
