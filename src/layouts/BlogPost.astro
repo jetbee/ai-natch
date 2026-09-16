@@ -1,0 +1,103 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  entry: CollectionEntry<'blog'>;
+}
+
+const { entry } = Astro.props;
+const { title, description, pubDate, updatedDate, tags, answerTo } = entry.data;
+
+const formatDate = (d: Date) =>
+  d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+---
+
+<BaseLayout title={title} description={description}>
+  <article>
+    <p class="pub-date">
+      {formatDate(pubDate)}
+      {updatedDate && <span> （更新: {formatDate(updatedDate)}）</span>}
+    </p>
+    <h1>{title}</h1>
+
+    {
+      answerTo && (
+        <p class="answer-to">
+          この記事は
+          <a href={answerTo.url} target="_blank" rel="noopener noreferrer">
+            {answerTo.title}
+          </a>
+          （HACH Blog）へのアンサー記事です。
+        </p>
+      )
+    }
+
+    <div class="content">
+      <slot />
+    </div>
+
+    {
+      tags.length > 0 && (
+        <ul class="tags">
+          {tags.map((tag) => (
+            <li>#{tag}</li>
+          ))}
+        </ul>
+      )
+    }
+  </article>
+</BaseLayout>
+
+<style>
+  .pub-date {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+  }
+
+  h1 {
+    font-size: 1.9rem;
+    line-height: 1.4;
+    margin: 0 0 1rem;
+  }
+
+  .answer-to {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+
+  .content {
+    margin-top: 2rem;
+  }
+
+  .content :global(h2) {
+    margin-top: 2.5rem;
+  }
+
+  .content :global(p) {
+    margin: 1rem 0;
+  }
+
+  .tags {
+    list-style: none;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0;
+    margin-top: 2.5rem;
+  }
+
+  .tags li {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+</style>

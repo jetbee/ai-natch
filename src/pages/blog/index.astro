@@ -1,0 +1,57 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog')).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+const formatDate = (d: Date) =>
+  d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+---
+
+<BaseLayout title="記事一覧">
+  <h1>記事一覧</h1>
+  <ul class="post-list">
+    {
+      posts.map((post) => (
+        <li>
+          <span class="date">{formatDate(post.data.pubDate)}</span>
+          <a href={`${import.meta.env.BASE_URL}blog/${post.slug}/`}>{post.data.title}</a>
+          <p>{post.data.description}</p>
+        </li>
+      ))
+    }
+  </ul>
+</BaseLayout>
+
+<style>
+  .post-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .post-list li {
+    padding: 1.25rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .date {
+    display: block;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .post-list a {
+    font-size: 1.15rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--fg);
+  }
+
+  .post-list p {
+    color: var(--muted);
+    margin: 0.35rem 0 0;
+  }
+</style>
