@@ -1,0 +1,67 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog')).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+const latest = posts.slice(0, 5);
+---
+
+<BaseLayout title="ホーム">
+  <section class="hero">
+    <h1>ai-natch Blog</h1>
+    <p>
+      現場でAIエージェントを動かすときに実際にぶつかる問題を、実践目線で書いていくブログです。
+      同じテーマを扱う他社の記事に対して、別の角度からの答えを添えることもあります。
+    </p>
+  </section>
+
+  <section>
+    <h2>最新記事</h2>
+    <ul class="post-list">
+      {
+        latest.map((post) => (
+          <li>
+            <a href={`${import.meta.env.BASE_URL}blog/${post.slug}/`}>{post.data.title}</a>
+            <p>{post.data.description}</p>
+          </li>
+        ))
+      }
+    </ul>
+    <p><a href={`${import.meta.env.BASE_URL}blog/`}>すべての記事を見る &rarr;</a></p>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero h1 {
+    font-size: 2.2rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .hero p {
+    color: var(--muted);
+  }
+
+  .post-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .post-list li {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .post-list a {
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--fg);
+  }
+
+  .post-list p {
+    color: var(--muted);
+    margin: 0.35rem 0 0;
+  }
+</style>

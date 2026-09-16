@@ -1,0 +1,61 @@
+name: Draft HACH answer post
+
+on:
+  schedule:
+    # 毎日 22:00 JST (13:00 UTC) にHACH Blogの新着をチェック
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  draft-answer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate answer post
+        id: generate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node scripts/generate-answer-post.mjs
+
+      - name: Open pull request
+        if: steps.generate.outputs.created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLUG: ${{ steps.generate.outputs.slug }}
+          TITLE: ${{ steps.generate.outputs.title }}
+          HACH_URL: ${{ steps.generate.outputs.hach_url }}
+        run: |
+          set -eu
+          git config user.name "ai-natch-bot"
+          git config user.email "ai-natch-bot@users.noreply.github.com"
+
+          BRANCH="hach-answer/${SLUG}"
+          git checkout -b "$BRANCH"
+          git add "src/content/blog/${SLUG}.md" data/answered-hach-posts.json
+          git commit -m "Add answer post: ${TITLE}"
+          git push -u origin "$BRANCH"
+
+          gh pr create \
+            --title "アンサー記事: ${TITLE}" \
+            --body "HACH Blogの新着記事に対するアンサー記事を自動生成しました。
+
+元記事: ${HACH_URL}
+
+マージ前に内容（事実関係・トーン・自社言及の妥当性）を確認してください。" \
+            --base main \
+            --head "$BRANCH"
